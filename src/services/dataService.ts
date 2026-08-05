@@ -1,22 +1,21 @@
 import type { BazaarData } from "../types/hypixelApiTypes.ts";
+import type { BazaarPriceSnapshot } from "../types/profitTypes";
 import type { FusionJson, Shard } from "../types/types";
 import { sortShardsByNameWithPrefixAwareness, filterShards, BASIC_FILTER_CONFIG, NAME_ONLY_FILTER_CONFIG } from "../utilities";
-
+import { BazaarSnapshotCache, createBazaarPriceSnapshot } from "./bazaarSnapshotCache";
 export class DataService {
   private static instance: DataService;
   private shardsCache: Shard[] | null = null;
   private shardNameToKeyCache: Record<string, string> | null = null;
   private fusionJsonCache: Promise<FusionJson> | null = null;
   private defaultRatesCache: Promise<Record<string, number>> | null = null;
-  private bazaarPriceCache: Record<string, Record<string, number>> | null = null;
-
+  private readonly bazaarSnapshotCache = new BazaarSnapshotCache(() => this.fetchBazaarPriceSnapshot());
   public static getInstance(): DataService {
     if (!DataService.instance) {
       DataService.instance = new DataService();
     }
     return DataService.instance;
   }
-
   private async fetchJson<T>(filename: string): Promise<T> {
     try {
       const response = await fetch(`${import.meta.env.BASE_URL}${filename}`);
@@ -28,7 +27,6 @@ export class DataService {
       throw new Error(`Failed to load ${filename}: ${error}`);
     }
   }
-
   private async fetchApi<T>(endpoint: string): Promise<T> {
     try {
       const response = await fetch(
@@ -42,7 +40,6 @@ export class DataService {
       throw new Error(`Failed to fetch API endpoint ${endpoint}: ${error}`);
     }
   }
-
   async loadShards(): Promise<Shard[]> {
     if (this.shardsCache) {
       return this.shardsCache;
@@ -58,7 +55,6 @@ export class DataService {
 
     return this.shardsCache;
   }
-
   async getShardNameToKeyMap(): Promise<Record<string, string>> {
     if (this.shardNameToKeyCache) {
       return this.shardNameToKeyCache;
@@ -72,7 +68,6 @@ export class DataService {
 
     return this.shardNameToKeyCache;
   }
-
   /**
    * The raw `fusion-data.json`, memoised. The file is ~6.5 MB, so this caches the
    * in-flight promise rather than the result: concurrent callers on a cold cache share
@@ -90,7 +85,6 @@ export class DataService {
     }
     return this.fusionJsonCache;
   }
-
   /**
    * Promise-cached like `loadFusionJson`: caching the awaited result instead leaves a
    * window where two concurrent callers both see an empty cache and both fetch.
@@ -104,37 +98,31 @@ export class DataService {
     }
     return this.defaultRatesCache;
   }
-
-  async loadShardCosts(useInstantBuyPrices: boolean): Promise<Record<string, number>> {
-    const cacheKey = useInstantBuyPrices ? "instant_buy" : "buy_offer";
-  
-    if (this.bazaarPriceCache?.[cacheKey]) {
-      return this.bazaarPriceCache[cacheKey];
-    }
-
-    const bazaarData = await this.fetchApi<BazaarData>("/bazaar");
-    const shards = await this.loadShards();
-    this.bazaarPriceCache = this.bazaarPriceCache ?? {};
-    this.bazaarPriceCache[cacheKey] = {};
-
-    for (const shard of shards) {
-      const product = bazaarData.products[shard.internal_id];
-      // Annotated as optional because the index signatures lie: shards absent from the
-      // Bazaar response, and products with an empty order book on one side, both resolve
-      // to `undefined` at runtime.
-      const order: { pricePerUnit: number } | undefined = useInstantBuyPrices
-        ? product?.buy_summary?.[0]
-        : product?.sell_summary?.[0];
-      // Leave the key unset rather than storing `undefined` in a Record<string, number>,
-      // so consumers' `?? fallback` fires as intended.
-      if (order !== undefined) {
-        this.bazaarPriceCache[cacheKey][shard.id] = order.pricePerUnit;
-      }
-    }
-  
-    return this.bazaarPriceCache[cacheKey];
+  private async fetchBazaarPriceSnapshot(): Promise<BazaarPriceSnapshot> {
+    const [bazaarData, shards] = await Promise.all([this.fetchApi<BazaarData>("/bazaar"), this.loadShards()]);
+    return createBazaarPriceSnapshot(bazaarData, shards);
   }
-
+  async loadBazaarPriceSnapshot(forceRefresh = false): Promise<BazaarPriceSnapshot> {
+    return this.bazaarSnapshotCache.get(forceRefresh);
+  }
+  async refreshBazaarPrices(): Promise<BazaarPriceSnapshot> {
+    return this.loadBazaarPriceSnapshot(true);
+  }
+  getCachedBazaarPriceSnapshot(): BazaarPriceSnapshot | null {
+    return this.bazaarSnapshotCache.getCached();
+  }
+  clearBazaarPriceCache(): void {
+    this.bazaarSnapshotCache.clear();
+  }
+  async loadShardCosts(useInstantBuyPrices: boolean): Promise<Record<string, number>> {
+    const snapshot = await this.loadBazaarPriceSnapshot();
+    const costs: Record<string, number> = {};
+    for (const [shardId, prices] of Object.entries(snapshot.prices)) {
+      const price = useInstantBuyPrices ? prices.buyPrice : prices.sellPrice;
+      if (price !== undefined) costs[shardId] = price;
+    }
+    return costs;
+  }
   private sortShardsByQuery(shards: Shard[], query: string): Shard[] {
     const lowerQuery = query.toLowerCase();
     return shards.sort((a, b) => {
@@ -144,13 +132,11 @@ export class DataService {
       const bKey = b.id.toLowerCase();
       const aStarts = aName.startsWith(lowerQuery) || aKey.startsWith(lowerQuery);
       const bStarts = bName.startsWith(lowerQuery) || bKey.startsWith(lowerQuery);
-      
       if (aStarts && !bStarts) return -1;
       if (!aStarts && bStarts) return 1;
       return sortShardsByNameWithPrefixAwareness(a, b);
     });
   }
-
   async searchShards(query: string): Promise<Shard[]> {
     const shards = await this.loadShards();
     const filtered = filterShards(shards, {
@@ -167,7 +153,6 @@ export class DataService {
       query,
       searchConfig: NAME_ONLY_FILTER_CONFIG,
     });
-
     // If no results found searching by name only, try searching title and description
     if (filtered.length === 0) {
       const fallbackConfig = {
@@ -186,7 +171,6 @@ export class DataService {
 
       return this.sortShardsByQuery(fallbackFiltered, query);
     }
-
     return this.sortShardsByQuery(filtered, query);
   }
 }

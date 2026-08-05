@@ -7,7 +7,6 @@ export const usePageTitle = () => {
   useEffect(() => {
     const getTitle = () => {
       const path = location.pathname;
-
       switch (path) {
         case "/":
           return "SkyShards · Calculator";
@@ -15,6 +14,8 @@ export const usePageTitle = () => {
           return "SkyShards · Recipes";
         case "/shards":
           return "SkyShards · Shards";
+        case "/fusion-profits":
+          return "SkyShards · Fusion Profits";
         default:
           return "SkyShards · Calculator";
       }

@@ -4,14 +4,13 @@ import { Layout } from "./components";
 import { CalculatorStateProvider, RecipeStateProvider } from "./context";
 import { usePageTitle, useShardIconPreload } from "./hooks";
 import { ToastProvider } from "./components";
-
 const CalculatorPage = lazy(() => import("./pages/CalculatorPage").then((module) => ({ default: module.CalculatorPage })));
 const SettingsPage = lazy(() => import("./pages/SettingsPage").then((module) => ({ default: module.SettingsPage })));
 const RecipePage = lazy(() => import("./pages/RecipePage"));
 const FusionGraphPage = lazy(() => import("./pages/FusionGraphPage").then((module) => ({ default: module.FusionGraphPage })));
+const FusionProfitPage = lazy(() => import("./pages/FusionProfitPage").then((module) => ({ default: module.FusionProfitPage })));
 const GuidePage = lazy(() => import("./pages/GuidePage").then((module) => ({ default: module.GuidePage })));
 const AboutPage = lazy(() => import("./pages/AboutPage").then((module) => ({ default: module.AboutPage })));
-
 const ContactPage = lazy(() => import("./pages/ContactPage").then((module) => ({ default: module.ContactPage })));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 
@@ -28,7 +27,6 @@ const AppWithProviders = () => {
     </ToastProvider>
   );
 };
-
 const ProtectedLayout = () => {
   usePageTitle(); // Update page title based on route
   useShardIconPreload(); // Warm the icon cache once the browser is idle
@@ -45,7 +43,6 @@ const ProtectedLayout = () => {
 const isProd = import.meta.env.PROD;
 const isGitHubPages = import.meta.env.BASE_URL.includes("/SkyShards/");
 const basename = isProd && isGitHubPages ? "/SkyShards" : "";
-
 const router = createBrowserRouter(
   [
     {
@@ -81,6 +78,14 @@ const router = createBrowserRouter(
           element: (
             <Suspense fallback={<LoadingSpinner />}>
               <FusionGraphPage />
+            </Suspense>
+          ),
+        },
+        {
+          path: "fusion-profits",
+          element: (
+            <Suspense fallback={<LoadingSpinner />}>
+              <FusionProfitPage />
             </Suspense>
           ),
         },
@@ -135,7 +140,6 @@ const router = createBrowserRouter(
     basename,
   }
 );
-
 const App = () => {
   return <RouterProvider router={router} />;
 };

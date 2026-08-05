@@ -1,13 +1,11 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Calculator, Settings, Shuffle, Share2, Menu, X, ExternalLink } from "lucide-react";
-
+import { Calculator, Settings, Shuffle, Share2, TrendingUp, Menu, X, ExternalLink } from "lucide-react";
 const GitHubIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
   </svg>
 );
-
 const KofiIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg viewBox="0 0 241 194" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
     <mask id="mask0_1_219" className="mask-type-luminance" maskUnits="userSpaceOnUse" x="-1" y="0" width="242" height="194">
@@ -41,7 +39,6 @@ const KofiIcon: React.FC<{ className?: string }> = ({ className }) => (
     </g>
   </svg>
 );
-
 export const Navigation: React.FC = () => {
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -51,8 +48,8 @@ export const Navigation: React.FC = () => {
     { path: "/recipes", label: "Recipes", icon: Shuffle, color: "green" },
     { path: "/shards", label: "Shards", icon: Settings, color: "blue" },
     { path: "/fusion-lines", label: "Fusion Lines", icon: Share2, color: "yellow" },
+    { path: "/fusion-profits", label: "Fusion Profits", icon: TrendingUp, color: "purple" },
   ];
-
   const colorClasses: Record<string, { bg: string; hoverBg: string; text: string; border: string; hoverBorder: string }> = {
     purple: {
       bg: "bg-purple-500/20",
@@ -83,7 +80,6 @@ export const Navigation: React.FC = () => {
       hoverBorder: "hover:border-blue-500/30",
     },
   };
-
   return (
     <nav className="border-b border-slate-700 bg-slate-900">
       <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -96,7 +92,6 @@ export const Navigation: React.FC = () => {
               SkyShards
             </div>
           </Link>
-
           <div className="hidden md:flex items-center space-x-2">
             {navItems.map(({ path, label, icon: Icon, color }) => {
               const isActive = location.pathname === path;
@@ -121,7 +116,6 @@ export const Navigation: React.FC = () => {
                 </Link>
               );
             })}
-
             <a
               href="https://greenhouse.skyshards.com"
               target="_blank"
@@ -131,7 +125,6 @@ export const Navigation: React.FC = () => {
               <ExternalLink className="w-3 h-3" />
               <span>Greenhouse</span>
             </a>
-
             <a
               href="https://github.com/Campionnn/SkyShards"
               target="_blank"
@@ -152,7 +145,6 @@ export const Navigation: React.FC = () => {
               <span>Buy us a coffee!</span>
             </a>
           </div>
-
           <div className="md:hidden">
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -163,7 +155,6 @@ export const Navigation: React.FC = () => {
             </button>
           </div>
         </div>
-
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-slate-700 pt-3 py-2">
             <div className="flex flex-col space-y-1 gap-1">
@@ -191,7 +182,6 @@ export const Navigation: React.FC = () => {
                   </Link>
                 );
               })}
-
               <div className="border-t border-slate-600 pt-3 my-1 space-y-1 flex flex-col gap-1">
                 <a
                   href="https://greenhouse.skyshards.com"
